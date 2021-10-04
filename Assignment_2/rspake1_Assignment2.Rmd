@@ -1,0 +1,238 @@
+---
+title: "Universal_Bank_Assignment_1"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+```
+
+## Explanation
+
+Lines 22-35 set up the workspace, calls the data, get rid of what we don't need and created dummy variables for education.
+Lines 37-53 partition the data and normalize it, summaries for each change are also present.
+Lines 55-72 set up the test data and normalize it (to keep things uniform).
+Lines 75-80 establish predictors and labels.
+Lines 82-84 build a model and identify the best k.
+Lines 86-90 establish validation labels, probability of accuracy, and the complex matrix for validation. Additinally, "Head" is used to show first 6 records for labels and probability.
+Lines 92-97 build a data frame to dually check for the best k and accuracy for each from k=1:14.
+Lines 99-107 renormalize the partitioned data and apply the prediction model to the test data. 
+
+```{r Universal Bank}
+library(caret)
+library(class)
+library(dplyr)
+library(gmodels)
+library(knitr)
+library(rmarkdown)
+Original <- read.csv("C:\\Users\\rspake1\\Desktop\\CSV files\\CSVs_for_class\\UniversalBank.csv")
+DF_Universal <- Original %>% select(Age, Experience, Income, Family, CCAvg, Education, Mortgage, Personal.Loan, Securities.Account, CD.Account, Online, CreditCard)
+DF_Universal$Education <- as.factor(DF_Universal$Education)
+DF_Universal$Personal.Loan <- as.factor((DF_Universal$Personal.Loan))
+Education <- dummyVars(~Education,DF_Universal)
+EduDV <- predict(Education, DF_Universal)
+DF_Universal <- subset(DF_Universal, select = -c(Education))
+dvDF_Universal <- cbind(DF_Universal,EduDV)
+
+set.seed(20)
+Train_Index = createDataPartition(dvDF_Universal$Personal.Loan, p=0.60, list=FALSE)
+Train_Data = dvDF_Universal[Train_Index,]
+Validation_Data = dvDF_Universal[-Train_Index,]
+summary(Train_Data)
+summary(Validation_Data)
+train.norm.df <- Train_Data
+valid.norm.df <- Validation_Data
+dvUniversal.norm.df <- dvDF_Universal
+norm.model <- preProcess(Train_Data[,1:6], method = c("center", "scale"))
+train.norm.df[,1:6] <- predict(norm.model, Train_Data[,1:6])
+valid.norm.df[,1:6] <- predict(norm.model, Validation_Data[,1:6])
+dvUniversal.norm.df[,1:6] <- predict(norm.model, dvDF_Universal[,1:6])
+summary(train.norm.df)
+var(train.norm.df)
+summary(valid.norm.df)
+var(valid.norm.df)
+
+Age <- 40
+Experience <- 10
+Income <- 84
+Family <- 2
+CCAvg <- 2
+Education.1 <- 0
+Education.2 <- 1
+Education.3 <- 0
+Mortgage <- 0
+Personal.Loan <- NA
+Securities.Account <- 0
+CD.Account <- 0
+Online <- 1
+CreditCard <- 1
+
+Test <- data.frame(Age,Experience,Income,Family,CCAvg,Mortgage,Personal.Loan,Securities.Account,CD.Account,Online,CreditCard,Education.1,Education.2,Education.3)
+test.norm.df <- Test
+test.norm.df[,1:6] <- predict(norm.model, Train_Data[,1:6])
+
+
+Train_Predictors <- train.norm.df[,1:6]
+Test_Predictors <- test.norm.df[,1:6]
+Valid_Predictors <- valid.norm.df[,1:6]
+Train_Labels <- train.norm.df[,7]
+Test_Labels <- test.norm.df[,7]
+Valid_Labels <- valid.norm.df[,7]
+
+Search_grid <- expand.grid(k=c(1,3,5,7,9,11))
+model_1 <- train(Personal.Loan~Age+Experience+Income+Family+CCAvg,data=train.norm.df, method="knn", tuneGrid=Search_grid)
+model_1
+
+Predicted_Valid_labels <- knn(Train_Predictors,Valid_Predictors,cl=Train_Labels,k=1, prob = TRUE)
+head(Predicted_Valid_labels)
+class_prob <- attr(Predicted_Valid_labels,'prob')
+head(class_prob)
+CrossTable(x=Valid_Labels,y=Predicted_Valid_labels,prop.chisq = FALSE)
+
+accuracy.df <- data.frame(k = seq(1,14,1),accuracy = rep(0,14))
+for(i in 1:14) {
+  knn.pred <- knn(train.norm.df[,1:6], valid.norm.df[,1:6],
+                  cl = train.norm.df[,7], k =i)
+  accuracy.df[i,2] <- confusionMatrix(knn.pred,valid.norm.df[,7])$overall[1]}
+accuracy.df
+
+norm.values <- preProcess(Validation_Data[,1:6], method=c("center","scale"))
+valid.norm.df[,1:6] <- predict(norm.values, Validation_Data[,1:6])
+test.norm.df[,1:6] <- predict(norm.values, Test[,1:6])
+summary(valid.norm.df)
+summary(test.norm.df)
+
+
+Predicted_Test_labels <- knn(Train_Predictors,Test_Predictors,cl=Train_Labels,k=1, prob = TRUE)
+head(Predicted_Valid_labels)
+
+
+
+
+
+``` 
+
+## Interpretation
+(Question 1)
+Lines 81-84 make deliver an output that tells us that the test data would be denied by the model for a Personal Loan. The prediction indicates this, and the accuracy check confirms the prediction is accurate. 
+
+(Question 2)
+
+The model indicates that K=1 is the best choice. A close second came at k=3, however this would reduce true positives in the model and based off the context, more false positives would be better than false negatives as the bank would lose out on a business opportunity.
+
+Validation confusion matrix (question 3)
+* Accuracy = Number correctly identified / Total = (122 + 1781) / 2000 = .9515
+* Recall is the true positive rate or sensitivity = 122 / 192 = .6354
+* Precision is the positive predictive value = 122 / (122 + 27) = 0.8187
+* Specificity, also called as the true negative rate = 1781 / 1808 = .985
+
+(Question 4)
+
+Conveniently, k=1 was identified as the best k, and that was also the original k provided in Question 1. Along with the rest of the data being the same, this answer is the same as Question 1 as the model would reject them. 
+
+```{r Question 5, echo=FALSE}
+library(caret)
+library(class)
+library(dplyr)
+library(gmodels)
+library(knitr)
+library(rmarkdown)
+Original <- read.csv("C:\\Users\\rspake1\\Desktop\\CSV files\\CSVs_for_class\\UniversalBank.csv")
+DF_Universal <- Original %>% select(Age, Experience, Income, Family, CCAvg, Education, Mortgage, Personal.Loan, Securities.Account, CD.Account, Online, CreditCard)
+DF_Universal$Education <- as.factor(DF_Universal$Education)
+DF_Universal$Personal.Loan <- as.factor((DF_Universal$Personal.Loan))
+Education <- dummyVars(~Education,DF_Universal)
+EduDV <- predict(Education, DF_Universal)
+DF_Universal <- subset(DF_Universal, select = -c(Education))
+dvDF_Universal <- cbind(DF_Universal,EduDV)
+
+set.seed(20)
+Train_Index = createDataPartition(dvDF_Universal$Personal.Loan, p=0.50, list=FALSE)
+Train_Data = dvDF_Universal[Train_Index,]
+Extra_Data = dvDF_Universal[-Train_Index,]
+Validation_Index = createDataPartition(Extra_Data$Personal.Loan, p=0.60, list = FALSE)
+Validation_Data = Extra_Data[Validation_Index,]
+Test_Data = Extra_Data[-Validation_Index,]
+summary(Train_Data)
+summary(Validation_Data)
+summary(Test_Data)
+train.norm.df <- Train_Data
+valid.norm.df <- Validation_Data
+test.norm.df <- Test_Data
+dvUniversal.norm.df <- dvDF_Universal
+norm.model <- preProcess(Train_Data[,1:6], method = c("center", "scale"))
+train.norm.df[,1:6] <- predict(norm.model, Train_Data[,1:6])
+valid.norm.df[,1:6] <- predict(norm.model, Validation_Data[,1:6])
+test.norm.df[,1:6] <- predict(norm.model, Test_Data[,1:6])
+dvUniversal.norm.df[,1:6] <- predict(norm.model, dvDF_Universal[,1:6])
+summary(train.norm.df)
+var(train.norm.df)
+summary(valid.norm.df)
+var(valid.norm.df)
+
+Train_Predictors <- train.norm.df[,1:6]
+Test_Predictors <- test.norm.df[,1:6]
+Valid_Predictors <- valid.norm.df[,1:6]
+Train_Labels <- train.norm.df[,7]
+Test_Labels <- test.norm.df[,7]
+Valid_Labels <- valid.norm.df[,7]
+
+Search_grid <- expand.grid(k=c(1,3,5,7,9,11))
+model_1 <- train(Personal.Loan~Age+Experience+Income+Family+CCAvg,data=train.norm.df, method="knn", tuneGrid=Search_grid)
+model_1
+
+Predicted_Valid_labels <- knn(Train_Predictors,Valid_Predictors,cl=Train_Labels,k=1, prob = TRUE)
+head(Predicted_Valid_labels)
+class_prob <- attr(Predicted_Valid_labels,'prob')
+head(class_prob)
+
+Predicted_Train_labels <- knn(Train_Predictors,Train_Predictors,cl=Train_Labels,k=1, prob = TRUE)
+head(Predicted_Valid_labels)
+class_prob <- attr(Predicted_Valid_labels,'prob')
+head(class_prob)
+
+Predicted_Test_labels <- knn(Train_Predictors,Test_Predictors,cl=Train_Labels,k=1, prob = TRUE)
+head(Predicted_Test_labels)
+class_prob <- attr(Predicted_Test_labels,'prob')
+head(class_prob)
+
+CrossTable(x=Valid_Labels,y=Predicted_Valid_labels,prop.chisq = FALSE)
+CrossTable(x=Train_Labels,y=Predicted_Train_labels,prop.chisq = FALSE)
+CrossTable(x=Test_Labels,y=Predicted_Test_labels,prop.chisq = FALSE)
+
+accuracy.df <- data.frame(k = seq(1,14,1),accuracy = rep(0,14))
+for(i in 1:14) {
+  knn.pred <- knn(train.norm.df[,1:6], valid.norm.df[,1:6],
+                  cl = train.norm.df[,7], k =i)
+  accuracy.df[i,2] <- confusionMatrix(knn.pred,valid.norm.df[,7])$overall[1]}
+accuracy.df
+
+norm.values <- preProcess(Validation_Data[,1:6], method=c("center","scale"))
+valid.norm.df[,1:6] <- predict(norm.values, Validation_Data[,1:6])
+test.norm.df[,1:6] <- predict(norm.values, Test[,1:6])
+summary(valid.norm.df)
+summary(test.norm.df)
+```
+
+(Question 5)
+
+Validation
+* Accuracy = Number correctly identified / Total = (82 + 1332) / 1500 = .9426
+* Recall is the true positive rate or sensitivity = 82 / 144 = .5694
+* Precision is the positive predictive value = 82 / (82 + 24) = 0.7736
+* Specificity, also called as the true negative rate = 1332 / 1356 = .9823
+
+Train
+* Accuracy = Number correctly identified / Total = (240 + 2260) / 2500 = 1
+* Recall is the true positive rate or sensitivity = 240 / 240 = 1
+* Precision is the positive predictive value = 240 / (240 + 0) = 1
+* Specificity, also called as the true negative rate = 2260 / 2260 = 1
+
+Test
+* Accuracy = Number correctly identified / Total = (58 + 890) / 1000 = .948
+* Recall is the true positive rate or sensitivity = 58 / 96 = .6041
+* Precision is the positive predictive value = 58 / 72 = 0.8055
+* Specificity, also called as the true negative rate = 890 / 904 = .9845
+
+May have made an error, but running a trained model on the training set will always result with a perfect result. However, when we look at the test and validation, the test set actually outperformed the validation set in every category. While this is likely due to the random split in data partitioning, it does illustrate how the validation set is a good generalization for test (considering how close they were), but it is not perfect. For instance, the a validation set could have indicated the model was not ready to be used, yet the test set could still pass. This best illustrates why it is important we have and use both.
+
