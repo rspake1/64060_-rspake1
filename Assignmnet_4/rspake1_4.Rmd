@@ -1,0 +1,64 @@
+---
+title: "rspake1_4_KMeans"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Assignment 4 K-Means Clustering
+
+```{r cars}
+library(tidyverse)
+library(dplyr)
+library(factoextra)
+DF_Pharma <- read.csv("C:\\Users\\rspake1\\Desktop\\CSV files\\CSVs_for_class\\Pharmaceuticals.csv")
+clust_constraint <- DF_Pharma %>% select(Market_Cap, Beta, PE_Ratio, ROE, ROA, Asset_Turnover, Leverage, Rev_Growth, Net_Profit_Margin)
+set.seed(2)
+
+clust_constraint <- scale(clust_constraint)
+distance <- get_dist(clust_constraint)
+fviz_dist(distance)
+```
+
+## finding ideal K, Including Plots
+
+```{r pressure}
+clust_constraint <- scale(clust_constraint)
+fviz_nbclust(clust_constraint,kmeans, method = "wss")
+fviz_nbclust(clust_constraint,kmeans, method = "silhouette")
+
+```
+
+## Clusters
+
+```{r}
+k5 <- kmeans(clust_constraint, centers = 5, nstart = 25)
+
+k5$centers
+k5$size
+k5$cluster[11]
+
+fviz_cluster(k5, data = clust_constraint)
+```
+a) Now that the clustering is complete, there are some insights we can pull from the output. Particularly, by using both the WSS and Silhouette methods, we could accurately determine that 5 clusters were needed as they both returned 5 as the optimum point. 
+
+
+b) we can make some general inferences about the clusters: 
+
+Cluster 1 had high ROE, ROA, Asset_Turnover, and Net_Profit_Margin, but low Market_Cap and Rev_Growth.
+Cluster 2 had very high Beta and Leverage, but very low Market_Cap, ROE, ROA, Net_Profit_Margins_, and Revenue Growth, which is likely why is is the furthest away from cluster 4.
+cluster 3 is the oddest of the bunch with only 2 members. This cluster has a VERY high PE_Ratio as well as a positive Asset_Turnover, but is low in every other category.
+While having low leverage,Beta, and PE_Ratio: cluster 4 held high Market_cap, ROE, ROA, Asset_Turnover, Revenue Growth, and Net_Profit_Margin which together set it apart from its closest neighbor, cluster 1.
+Cluster 5 has the a very high Rev_Growth and positive Beta and Leverage, while maintaining low numbers in the other categories. 
+
+
+c) Looking at the last three columns that were not used in the clustering, there seems to be no consistent patterns within the clusters. Between most points, you will find that while they both may have the same exchange, the location or recommendation would be different, or visa versa. Thoguh generally speaking, almost all were in the NYSE exchange anyways.
+
+d) 
+Cluster 1: Medium Market_cap,ROE,ROA,Asset_Turnover,Leverage, Net_Profit_Margin, and Rev_Growth: "Medium"
+Cluster 2: very high Beta and Leverage, very low ROA and Net_Profit_Margin: "High beta, low assets"
+Cluster 3: Extreme PE_Ratio and low Net_Profit_Margin:"High Price Earnings ratio, but low new profits"
+Cluster 4: highest Market_Cap, ROE, ROA, Asset_Turnover, and Net_Profit_Margin: "great asset management with small negatives"
+Cluster 5: small positive Beta with highest Rev_Growth and slightly negative Net_profit_margin: "bad asset management with good growth"
