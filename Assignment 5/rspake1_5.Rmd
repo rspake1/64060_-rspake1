@@ -1,0 +1,195 @@
+---
+title: "rspake1_5"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Assignment 5
+
+The dataset Cereals.csv includes nutritional information, store display, and consumer ratings for 
+77 breakfast cereals. 
+Data Preprocessing. Remove all cereals with missing values.
+
+```{r data preparation}
+library(readr)
+library(tidyverse)
+library(caret)
+library(cluster)
+library(factoextra)
+library(RColorBrewer)
+
+DF_Cereals <- read.csv("C:\\Users\\rspake1\\Desktop\\CSV files\\CSVs_for_class\\Cereals.csv")
+DF_Cereals <- na.omit(DF_Cereals)
+numeric_Cereals <- DF_Cereals %>% select_if(is.numeric)
+head(numeric_Cereals)
+DF_Cereals_norm <- as.data.frame(scale(numeric_Cereals))
+
+d <- dist(DF_Cereals_norm, method = "euclidean")
+
+```
+The above section prepares the data, normalizes it, and sets the euclidean distance that will be used throgh out the assignment. 
+
+
+## Question 1
+
+Apply hierarchical clustering to the data using Euclidean distance to the normalized 
+measurements. Use Agnes to compare the clustering from  single linkage, complete 
+linkage, average linkage, and Ward. Choose the best method. 
+
+```{r question 1}
+
+m <- c( "average", "single", "complete", "ward")
+names(m) <- c( "average", "single", "complete", "ward")
+# function to compute coefficient
+ac <- function(x) {
+  agnes(d, method = x)$ac
+}
+map_dbl(m, ac)    
+```
+
+Based off of the agglomerative coefficients, we can determine that the **WARD** method is the best linkage method in this scenario with a coefficient of **0.9046042**.
+
+## Question 2
+
+How many clusters would you choose? 
+
+```{r question 2}
+
+hc <- agnes(d, method = "ward")
+pltree(hc, cex = 0.6, hang = -1, main = "Agnes Dendogram")
+
+
+```
+We create the first Dendogram to find the area where the largest change takes place to determine where the clusters should be. From looking at the dendogram above, between 10 and 15 is the largest jump in height, averaging out, the far branch on the right appears around 13, so that is where I determine the clusters to start. Coming out to 5 clusters.
+
+```{r}
+pltree(hc, cex = 0.6, hang = -1, main = "Agnes Dendogram")
+rect.hclust(hc, k = 5, border = 1:5)
+```
+We now recreate the dendogram with boxes that represent the clusters decided upon earlier. This clearly indicates each of the **5** independent clusters that were determined above. 
+
+## Question 3
+
+Comment on the structure of the clusters and on their stability. Hint: To check stability,  
+partition the data and see how well clusters formed based on one part apply to the other 
+part. To do this: 
+● Cluster partition A 
+● Use the cluster centroids from A to assign each record in partition B (each record 
+is assigned to the cluster with the closest centroid). 
+● Assess how consistent the cluster assignments are compared to the 
+assignments based on all the data.
+
+```{r Question 3}
+cluster_part <- cutree(hc, k = 5)
+cereals_clustered <- mutate(DF_Cereals_norm, cluster = cluster_part)
+set.seed(23)
+
+part_index <- createDataPartition(cereals_clustered$cluster, p = 0.7, list = FALSE)
+Part_A <- cereals_clustered[part_index,]
+Part_B <- cereals_clustered[-part_index,]
+```
+
+With the above code, we cluster the data, then create a partition for cluster A using the partition index.
+
+```{r finding centroid}
+Part_A_centroid <- Part_A %>% gather("features", "values", -cluster) %>% group_by(cluster,features) %>% summarise(mean_values = mean(values)) %>% spread(features, mean_values)
+
+cluster_B <- data.frame(data = seq(1,nrow(Part_B), 1), Cluster_B_Part = rep(0,nrow(Part_B)))
+
+for (x in 1:nrow(Part_B)) {
+  cluster_B$Cluster_B_Part[x] <- which.min(as.matrix(get_dist(as.data.frame(rbind(Part_A_centroid[-1], Part_B[x, -length(Part_B)]))))[6,-6])
+}
+
+cluster_B <- cluster_B %>% mutate(original_clusters = Part_B$cluster)
+mean(cluster_B$Cluster_B_Part) == cluster_B$original_clusters
+```
+In the above code, I am taking the two partitions created and establishing the centroid of partition A, then creating a cluster B from the partition b. From there the variables of partition B have their clusters labeled. Then these are compared to the original cluster to determine the stability.
+
+Based off of these results above, the partition for B is not identical to the original cluster. Because of this, I would determine that this cluster assignment is **unstable**. 
+
+## Question 4
+ The elementary public schools would like to choose a set of cereals to include in their 
+daily cafeterias. Every day a different cereal is offered, but all cereals should support a 
+healthy diet. For this goal, you are requested to find a cluster of “healthy cereals.” 
+Should the data be normalized? If not, how should they be used in the cluster analysis? 
+
+```{r}
+split_clusters <- split(cereals_clustered, cereals_clustered$cluster)
+mean_split <- lapply(split_clusters,colMeans)
+mean_split
+
+(centroids <- do.call(rbind, mean_split))
+```
+
+In the above code, I am splitting the clusters from the clustered cereal data frame through the clusters variable. Then in order to visualize the results using ggplot, I have to create a **lapply** of mean_split and a centroid variable using **do.call**.
+
+The lapply itself will return the variables for each cluster, from which we can determine the categories of each cluster. However, a graph will make the information easier to understand and process for non-analytics viewers. 
+
+```{r}
+hc.graph <-
+  colorRampPalette(rev(brewer.pal(9, 'Blues')), space = 'Lab')
+data.frame(centroids) %>% gather("features", "values",-cluster) %>%
+  ggplot(aes(
+    x = factor(cluster),
+    y = features,
+    fill = values
+  )) + 
+  geom_tile() + theme_classic() +
+  theme(
+    legend.position = "top",
+    plot.title = element_text(hjust = 0.5),
+    legend.key.width = unit(3, "cm"),
+  ) +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_fill_gradientn(colours = hc.graph(100)) +
+  labs(title = "Cluster Characteristics",
+       x = "Clusters",
+       y = "Features",
+       fill = "Centroids")
+```
+library(RColorBrewer) was recommended on the internet to help with these types of graphical representations.
+
+Using the "help" section in Rstudio, I was able to create a graph that illustrates the strengths and weaknesses of each cluster so they can be better assessed as a "healthy choice". The darker the tile, the lower that cluster scores in that area. 
+
+For a healthy option, we want high scores in fiber, protein, vitamins as well as low scores in sugars and sodium. 
+
+Based on the lapply above and the graph, here are the clusters that are observed:
+
+## Cluster 1 
+High in fiber, potassium, rating, and moderately high protein.
+Low in calories, carbs, cups, and sugars.
+
+Relating the Dendogram and graph above to the excel sheet, we find that cluster 1 is the **Bran** groups of cereals (such as 100% Bran).
+
+## Cluster 2
+Higher in calories, weight, fat, and shelf life
+low in cups, rating, sodium, and vitamins
+
+Relating the Dendogram and graph above to the excel sheet, we find that cluster 2 is the **multi-grain** with fruits section of cereals (such as Nutri-Grain_Almond-Raisin).
+
+## Cluster 3
+High in sugar, sodium, cups, fats, and calories
+low in rating and protein
+
+Relating the Dendogram and graph above to the excel sheet, we find that cluster 3 is the **Sugar Cereal** group (such as Apple-Jacks).
+
+## Cluster 4
+High in sodium, vitamins, and carbs
+low in sugars
+
+Relating the Dendogram and graph above to the excel sheet, we find that cluster 4 is the **Natural cereals** (such as honey comb and Crispix).
+
+## Cluster 5
+High in rating
+low in sodium, sugars, vitamins, weight, and calories
+
+Relating the Dendogram and graph above to the excel sheet, we find that cluster 5 is the **Shredded Wheats and Puffs** group of cereals (such as Strawberry_Fruit_Wheats and Shredded_Wheat).
+
+## Conclusion
+
+Based off of the criteria established for what constitutes a "healthy" cereal option, the best cluster is **Cluster 1** The Bran group.
+
+When making this conclusion we want the data to be normalized so that we can make a fair assessment. If we do not do this, clusters with greater volumes will out-weigh the smaller clusters in the decision making, leading to an inaccurate representation. With the data normalized, we can make accurate centroids that equally represent all clusters. 
