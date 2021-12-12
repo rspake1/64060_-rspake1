@@ -1,0 +1,75 @@
+---
+title: "Final PRoject MK4"
+author: "Ryan Spake"
+date: "12/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+
+library(caret)
+library(class)
+library(dplyr)
+library(gmodels)
+library(knitr)
+library(rmarkdown)
+Original <- read.csv("C:\\Users\\rspake1\\Desktop\\UCI_Credit_Card.csv")
+DF_CC <- Original %>% select(LIMIT_BAL, SEX, EDUCATION, MARRIAGE, AGE, PAY_0, PAY_2, PAY_3, PAY_4, PAY_5, PAY_6, BILL_AMT1, BILL_AMT2, BILL_AMT3, BILL_AMT4, BILL_AMT5, BILL_AMT6, PAY_AMT1, PAY_AMT2, PAY_AMT3, PAY_AMT4, PAY_AMT5, PAY_AMT6, default.payment.next.month)
+DF_CC$EDUCATION <- as.factor(DF_CC$EDUCATION)
+DF_CC$default.payment.next.month <- as.factor((DF_CC$default.payment.next.month))
+EDUCATION <- dummyVars(~EDUCATION,DF_CC)
+EduDV <- predict(EDUCATION, DF_CC)
+DF_CC <- subset(DF_CC, select = -c(EDUCATION))
+dvDF_CC <- cbind(DF_CC,EduDV)
+set.seed(170)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+Train_Index = createDataPartition(dvDF_CC$default.payment.next.month, p=0.70, list=FALSE)
+Train_Data = dvDF_CC[Train_Index,]
+
+Extra_Data = dvDF_CC[-Train_Index,]
+Validation_Index = createDataPartition(Extra_Data$default.payment.next.month, p=0.40, list = FALSE)
+Validation_Data = Extra_Data[Validation_Index,]
+Test_Data = Extra_Data[-Validation_Index,]
+
+Train_Var1st <- Train_Data[,1:22]
+Train_Var2nd <- Train_Data[,24:30]
+Train_Var <- cbind(Train_Var1st,Train_Var2nd)
+
+train.norm.df <- Train_Data
+valid.norm.df <- Validation_Data
+test.norm.df <- Test_Data
+dvCC.norm.df <- dvDF_CC
+norm.model <- preProcess(Train_Data[,1:22-24:30], method = c("center", "scale"))
+train.norm.df[,1:22-24:30] <- predict(norm.model, Train_Data[,1:22-24:30])
+valid.norm.df[,1:22-24:30] <- predict(norm.model, Validation_Data[,1:22-24:30])
+test.norm.df[,1:22-24:30] <- predict(norm.model, Test_Data[,1:22-24:30])
+dvCC.norm.df[,1:22-24:30] <- predict(norm.model, dvDF_CC[,1:22-24:30])
+```
+
+
+
+```{r}
+
+```
+
+
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
