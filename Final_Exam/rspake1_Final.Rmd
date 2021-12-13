@@ -14,6 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 Dataset aquired from kaggle. Data is from biologists collecting data on penguins:
 
 https://www.kaggle.com/parulpandey/palmer-archipelago-antarctica-penguin-data?select=penguins_lter.csv
+Gorman KB, Williams TD, Fraser WR (2014) Ecological Sexual Dimorphism and Environmental Variability within a Community of Antarctic Penguins (Genus Pygoscelis). PLoS ONE 9(3): e90081. doi:10.1371/journal.pone.0090081
 
 
 ## Prepare the data
