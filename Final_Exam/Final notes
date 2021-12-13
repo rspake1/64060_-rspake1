@@ -1,4 +1,4 @@
-This Final was very difficuly for me as rel world datasets are all formatted different and all have different issues. 
+This Final was very difficuly for me as real world datasets are all formatted different and all have different issues. 
 
 I originally worked on a Credit Card dataset to determine loan defaulting. After 20 hours of working on it, I thought I had finally built a good model, but going back through and testing, the algorithm could not detect an optimal k. 
 I fought with that single line of code for HOURS.
